@@ -7,7 +7,7 @@ const MAX_CATEGORY_COUNT = 20;
 const MAX_CATEGORY_NAME_LENGTH = 40;
 const MAX_FINANCIAL_VALUE = 1_000_000_000;
 const MAX_COUNT_VALUE = 100_000;
-const OPENROUTER_TIMEOUT_MS = 15_000;
+const OPENROUTER_TIMEOUT_MS = 30_000;
 const IP_RATE_LIMIT_MAX = 20;
 const USER_RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -379,8 +379,9 @@ ${parsedMessage.value}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        model: "inclusionai/ling-3.0-flash-fin:free",
         messages: [{ role: "user", content: prompt }],
+        max_tokens: 512,
       }),
       signal: controller.signal,
     });
