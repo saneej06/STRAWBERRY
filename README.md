@@ -11,9 +11,9 @@ STRAWBERRY is a Vite + React expense tracker with self-hosted authentication, Su
 
 - Frontend: React 19, TypeScript, Vite
 - Styling: Tailwind CSS v4
-- Backend: Vercel-style Functions (`api/`) with Supabase PostgreSQL via `@supabase/supabase-js` (service-role key, server-side only)
+- Backend: a single Vercel Serverless Function (`api/[...slug].js`) dispatching the `server/` handlers, with Supabase PostgreSQL via `@supabase/supabase-js` (service-role key, server-side only)
 - Auth: Self-hosted JWT auth with bcrypt password hashing
-- AI: OpenRouter via `api/ai-assistant.js`
+- AI: OpenRouter via `server/ai-assistant.js`
 - Email (optional): Brevo for verification and password reset emails
 - Deployment: Vercel
 
@@ -65,7 +65,7 @@ APP_URL=https://your-production-url.vercel.app
 
 Notes:
 
-- Before signing up, apply the schema once: open `supabase/migrations/0001_initial_schema.sql` in the Supabase Dashboard → SQL Editor (or run `supabase db push`). Tables are **not** auto-created at runtime; `ensureSchema()` in `api/supabase.js` verifies the tables exist and tells you which migration to run if they are missing.
+- Before signing up, apply the schema once: open `supabase/migrations/0001_initial_schema.sql` in the Supabase Dashboard → SQL Editor (or run `supabase db push`). Tables are **not** auto-created at runtime; `ensureSchema()` in `server/supabase.js` verifies the tables exist and tells you which migration to run if they are missing.
 - `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `OPENROUTER_API_KEY`, `BREVO_API_KEY`, and `EMAIL_VERIFICATION_SECRET` are server-side only. Do not prefix them with `VITE_`.
 - `BREVO_FROM_EMAIL` must be a sender email validated in Brevo (Brevo Dashboard → Senders).
 - Local development does not require email verification or a custom domain. Verification and password reset links are shown directly in the app UI in development mode.
@@ -102,7 +102,7 @@ Set these environment variables in Vercel:
 
 ### Database setup
 
-Create a Supabase project and apply `supabase/migrations/0001_initial_schema.sql` once (SQL Editor or `supabase db push`). All API access goes through the service-role client in `api/supabase.js`, so no `VITE_` Supabase variables and no database access reach the browser.
+Create a Supabase project and apply `supabase/migrations/0001_initial_schema.sql` once (SQL Editor or `supabase db push`). All API access goes through the service-role client in `server/supabase.js`, so no `VITE_` Supabase variables and no database access reach the browser.
 
 ### Google Login (optional)
 
@@ -118,7 +118,7 @@ Authorized redirect URI must be `https://<your-domain>/api/auth-google/callback`
 - Passwords are hashed with bcrypt (12 rounds).
 - Sessions use signed JWT tokens verified on every API request.
 - The AI endpoint validates request size and sanitizes client-provided summary context.
-- All database access happens server-side through the Supabase service-role client (`api/supabase.js`); the service-role key is never exposed to the browser.
+- All database access happens server-side through the Supabase service-role client (`server/supabase.js`); the service-role key is never exposed to the browser.
 - Secrets are only read on the server; no `VITE_` variables hold secrets.
 - Security headers are configured in `vercel.json`.
 - The AI rate limiter is in-memory, so it is best-effort on Vercel rather than globally shared.
@@ -128,14 +128,17 @@ Authorized redirect URI must be `https://<your-domain>/api/auth-google/callback`
 ```text
 strawberry/
 |-- api/
-|   `-- ai-assistant.js
-|   `-- auth.js
-|   `-- auth-google*.js
-|   `-- user.js
-|   `-- data.js
-|   `-- password-reset.js
-|   `-- db.js
-|   `-- supabase.js       (server-side Supabase client)
+|   `-- [...slug].js      (single Vercel Serverless entrypoint, dispatches /api/*)
+|-- server/
+|   |-- ai-assistant.js
+|   |-- auth.js
+|   |-- auth-google*.js
+|   |-- user.js
+|   |-- data.js
+|   |-- password-reset.js
+|   |-- email.js
+|   |-- db.js
+|   |-- supabase.js       (server-side Supabase client)
 |   `-- jwt.js
 |-- supabase/
 |   `-- migrations/0001_initial_schema.sql

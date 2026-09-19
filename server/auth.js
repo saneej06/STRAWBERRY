@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
-import { supabase, ensureSchema } from "../api/supabase.js";
-import { createToken } from "../api/jwt.js";
-import { sendEmail } from "../api/email.js";
+import { supabase, ensureSchema } from "./supabase.js";
+import { createToken } from "./jwt.js";
+import { sendEmail } from "./email.js";
 
 const MAX_BODY_BYTES = 8 * 1024;
 const MIN_PASSWORD_LENGTH = 6;

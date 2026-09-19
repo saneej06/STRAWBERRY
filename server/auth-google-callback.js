@@ -1,4 +1,4 @@
-import { ensureSchema } from "../api/db.js";
+import { ensureSchema } from "./db.js";
 import {
   getAppUrl,
   getRedirectUri,
@@ -7,7 +7,7 @@ import {
   upsertGoogleUser,
   createSessionForUser,
   verifyStateToken,
-} from "../api/google-oauth.js";
+} from "./google-oauth.js";
 
 function redirectToLogin(res, hashFragment) {
   const target = `/login${hashFragment}`;

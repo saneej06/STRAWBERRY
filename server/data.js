@@ -1,5 +1,5 @@
-import { supabase, ensureSchema } from "../api/supabase.js";
-import { extractToken, verifyToken } from "../api/jwt.js";
+import { supabase, ensureSchema } from "./supabase.js";
+import { extractToken, verifyToken } from "./jwt.js";
 
 function readHeader(req, headerName) {
   const value = req.headers?.[headerName];

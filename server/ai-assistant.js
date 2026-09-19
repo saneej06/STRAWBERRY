@@ -1,4 +1,4 @@
-import { extractToken, verifyToken } from "../api/jwt.js";
+import { extractToken, verifyToken } from "./jwt.js";
 
 const MAX_MESSAGE_LENGTH = 1000;
 const MAX_BODY_BYTES = 16 * 1024;

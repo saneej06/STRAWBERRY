@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
-import { supabase, ensureSchema } from "../api/supabase.js";
-import { createToken, verifyToken } from "../api/jwt.js";
+import { supabase, ensureSchema } from "./supabase.js";
+import { createToken, verifyToken } from "./jwt.js";
 
 export function readHeader(req, headerName) {
   const value = req.headers?.[headerName];

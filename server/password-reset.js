@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
-import { supabase, ensureSchema } from "../api/supabase.js";
-import { sendEmail } from "../api/email.js";
+import { supabase, ensureSchema } from "./supabase.js";
+import { sendEmail } from "./email.js";
 
 function readHeader(req, headerName) {
   const value = req.headers?.[headerName];
