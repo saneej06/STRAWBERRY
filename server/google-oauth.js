@@ -19,7 +19,12 @@ export function getAppUrl(req) {
 }
 
 export function googleConfigured() {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  const id = process.env.GOOGLE_CLIENT_ID;
+  const secret = process.env.GOOGLE_CLIENT_SECRET;
+  // TEMPORARY DIAGNOSTIC (non-secret booleans; no values logged).
+  // Remove after verifying production Google OAuth.
+  console.log(`[google-oauth][configured] idSet=${Boolean(id)} secretSet=${Boolean(secret)}`);
+  return Boolean(id && secret);
 }
 
 export function getRedirectUri(req) {
