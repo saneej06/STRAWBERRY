@@ -30,8 +30,7 @@ export default function About() {
             {/* Hero Section */}
             <div className="text-center space-y-6">
                 <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight">
-                    <span style={{ color: "var(--accent)" }}>SPEND</span>
-                    <span style={{ color: "var(--text-primary)" }}>ORA</span>
+                    <span style={{ color: "var(--accent)" }}>STRAWBERRY</span>
                 </h1>
                 <p className="text-xl max-w-2xl mx-auto leading-relaxed px-4" style={{ color: "var(--text-muted)" }}>
                     Master your money, simplify your life. Welcome to my app!
@@ -42,14 +41,14 @@ export default function About() {
             <div className="flex flex-col md:flex-row items-center gap-10 p-10 rounded-[3rem] bg-[var(--bg-elevated)] border border-[var(--border)]">
                 <div className="space-y-4 text-center md:text-left">
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-                        <h2 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>Insath Raif</h2>
+                        <h2 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>Mohammed Saneei</h2>
                         <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center gap-1">
                             <GraduationCap size={12} />
                             Student
                         </span>
                     </div>
                     <p className="text-lg leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                        I am a Software Engineering Student and the developer behind Spendora. I built this website to help people gain better control over their finances with modern, easy-to-use tools.
+                        I am a Software Engineering Student and the developer behind STRAWBERRY. I built this website to help people gain better control over their finances with modern, easy-to-use tools.
                     </p>
                     <div className="flex items-center justify-center md:justify-start gap-4">
                         <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
@@ -82,7 +81,7 @@ export default function About() {
 
             <div className="text-center pb-20">
                 <p className="text-sm uppercase tracking-[0.2em] font-bold opacity-30" style={{ color: "var(--text-muted)" }}>
-                    Developed by Insath Raif
+                    Developed by Mohammed Saneei
                 </p>
             </div>
         </div>

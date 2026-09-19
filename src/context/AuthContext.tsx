@@ -1,25 +1,32 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { auth } from "../firebase";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  GoogleAuthProvider,
-  signInWithPopup,
-  updateProfile,
-  sendPasswordResetEmail,
-} from "firebase/auth";
-import { db, storage } from "../firebase";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+  api,
+  getAuthToken,
+  getStoredUserData,
+  storeAuthTokens,
+  clearAuthTokens,
+} from "../services/api";
+import { fetchProfile } from "../services/dataService";
+
+export type AppUser = {
+  id: string;
+  uid: string;
+  email?: string;
+  name?: string;
+  displayName?: string;
+  photoURL?: string;
+  user_metadata?: any;
+};
+
+type Notifications = { email?: boolean; push?: boolean; inApp?: boolean; earlyWarning?: string; paymentDay?: string };
 
 interface AuthContextType {
-  currentUser: any;
+  currentUser: AppUser | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<void>;
-  register: (name: string, email: string, pass: string) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  register: (name: string, email: string, pass: string) => Promise<{ message: string; verificationUrl?: string }>;
+  resetPassword: (email: string) => Promise<{ message: string; devResetUrl?: string }>;
+  confirmPasswordReset: (token: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (data: {
@@ -27,88 +34,147 @@ interface AuthContextType {
     bio?: string;
     photoURL?: string;
     avatarFile?: File;
-    notifications?: {
-      email?: boolean;
-      push?: boolean;
-      inApp?: boolean;
-      earlyWarning?: string;
-      paymentDay?: string;
-    };
+    notifications?: Notifications;
   }) => Promise<void>;
   profileData: any;
   isMock: boolean;
+  handleOAuthRedirect: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const defaultNotifications = { email: true, push: false, inApp: true, earlyWarning: "3", paymentDay: "due" };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const profileCache = useRef<Record<string, any>>({});
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      try {
-        if (user) {
-          // Sync user profile to Firestore
-          const userRef = doc(db, "users", user.uid);
-          const userSnap = await getDoc(userRef);
+  const mapUser = (raw: any): AppUser => ({
+    id: raw.id,
+    uid: raw.id,
+    email: raw.email,
+    name: raw.name || raw.displayName || raw.email?.split("@")[0] || "User",
+    displayName: raw.displayName || raw.name || raw.email?.split("@")[0] || "User",
+    photoURL: raw.photoURL || raw.photo_url || null,
+    user_metadata: raw,
+  });
 
-          if (!userSnap.exists()) {
-            const initialData = {
-              name: user.displayName || user.email?.split("@")[0] || "User",
-              email: user.email,
-              createdAt: serverTimestamp(),
-              currency: "LKR",
-              notifications: {
-                email: true,
-                push: false,
-                inApp: true,
-                earlyWarning: "3",
-                paymentDay: "due",
-              },
-            };
-            await setDoc(userRef, initialData);
-            setProfileData(initialData);
-          } else {
-            setProfileData(userSnap.data());
-          }
-        } else {
-          setProfileData(null);
-        }
-      } catch (err) {
-        console.error("Error syncing user profile:", err);
-      } finally {
-        setCurrentUser(user);
-        setLoading(false);
+  const syncProfile = useCallback(async (userId: string) => {
+    try {
+      if (profileCache.current[userId]) {
+        setProfileData({ ...profileCache.current[userId], photoURL: profileCache.current[userId]?.photo_url });
+        return;
       }
-    });
-
-    return unsubscribe;
+      const res = await fetchProfile();
+      const prof = res?.profile;
+      if (prof) {
+        profileCache.current[userId] = prof;
+        setProfileData({ ...prof, photoURL: prof.photo_url });
+      } else {
+        setProfileData(null);
+      }
+    } catch (err) {
+      console.error("Failed to sync profile:", err);
+    }
   }, []);
 
-  const login = async (email: string, pass: string) => {
-    await signInWithEmailAndPassword(auth, email, pass);
-  };
+  const restoreSession = useCallback(async () => {
+    const token = getAuthToken();
+    const storedUser = getStoredUserData();
+    if (!token || !storedUser) {
+      setCurrentUser(null);
+      setProfileData(null);
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await api.get<any>("/api/user");
+      const mapped = mapUser(res?.user || storedUser);
+      setCurrentUser(mapped);
+      await syncProfile(mapped.id);
+    } catch {
+      clearAuthTokens();
+      setCurrentUser(null);
+      setProfileData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [syncProfile]);
 
-  const register = async (name: string, email: string, pass: string) => {
-    const res = await createUserWithEmailAndPassword(auth, email, pass);
-    if (res.user) {
-      await updateProfile(res.user, { displayName: name });
+  const handleOAuthRedirect = useCallback(async (): Promise<boolean> => {
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash) return false;
+
+    const params = new URLSearchParams(hash);
+    const token = params.get("token");
+    const errorParam = params.get("error");
+
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+
+    if (errorParam) throw new Error(decodeURIComponent(errorParam).replace(/\+/g, " "));
+    if (token) {
+      storeAuthTokens(token, {});
+      const res = await api.get<any>("/api/user");
+      const mapped = mapUser(res?.user || {});
+      storeAuthTokens(token, res?.user || {});
+      setCurrentUser(mapped);
+      await syncProfile(mapped.id);
+      return true;
+    }
+    return false;
+  }, [syncProfile]);
+
+  useEffect(() => {
+    void restoreSession();
+  }, [restoreSession]);
+
+  const login = async (email: string, password: string) => {
+    const res = await api.post<any>("/api/user", { email, password });
+    if (res?.token) {
+      storeAuthTokens(res.token, res.user);
+      const mapped = mapUser(res.user);
+      setCurrentUser(mapped);
+      await syncProfile(mapped.id);
     }
   };
 
+  const register = async (name: string, email: string, password: string) => {
+    const res = await api.post<any>("/api/auth", { name, email, password });
+    return {
+      message: res?.message || "Account created successfully.",
+      verificationUrl: res?.verificationUrl || undefined,
+    };
+  };
+
   const resetPassword = async (email: string) => {
-    await sendPasswordResetEmail(auth, email);
+    const res = await api.post<any>("/api/password-reset", { email });
+    return {
+      message: res?.message || "If an account exists, a reset link has been sent.",
+      devResetUrl: res?.devResetUrl,
+    };
+  };
+
+  const confirmPasswordReset = async (token: string, password: string) => {
+    await api.patch<any>("/api/password-reset", { token, password });
   };
 
   const loginWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    const configRes = await api.get<{ configured: boolean }>("/api/auth-google-config");
+    if (!configRes?.configured) {
+      throw new Error(
+        "Google Login is not configured yet. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables to enable it."
+      );
+    }
+    window.location.href = "/api/auth-google";
   };
 
   const logout = async () => {
-    await firebaseSignOut(auth);
+    clearAuthTokens();
+    setCurrentUser(null);
+    setProfileData(null);
+    profileCache.current = {};
+    api.del("/api/user").catch(() => {});
   };
 
   const updateUserProfile = async ({
@@ -122,110 +188,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     bio?: string;
     photoURL?: string;
     avatarFile?: File;
-    notifications?: {
-      email?: boolean;
-      push?: boolean;
-      inApp?: boolean;
-      earlyWarning?: string;
-      paymentDay?: string;
-    };
+    notifications?: Notifications;
   }) => {
-    const user = auth.currentUser;
-    if (!user) {
-      console.error("Update failed: No user found in auth.currentUser");
-      throw new Error("No user logged in");
-    }
+    if (!currentUser) throw new Error("No user logged in");
 
-    let finalPhotoURL = photoURL || user.photoURL;
-
-    // Handle avatar upload (if still used elsewhere)
+    let finalPhotoURL = photoURL || currentUser.photoURL || null;
     if (avatarFile) {
-      try {
-        if (!avatarFile.type.startsWith("image/")) {
-          throw new Error("Only image uploads are allowed.");
-        }
-
-        if (avatarFile.size > 5 * 1024 * 1024) {
-          throw new Error("Avatar uploads must be 5 MB or smaller.");
-        }
-
-        // Use a timestamp to prevent cache issues and identify unique uploads
-        const timestamp = Date.now();
-        const storageRef = ref(storage, `avatars/${user.uid}/avatar-${timestamp}`);
-
-        await uploadBytes(storageRef, avatarFile);
-
-        finalPhotoURL = await getDownloadURL(storageRef);
-      } catch (uploadErr: any) {
-        console.error("Storage Error during upload/URL fetch:", uploadErr);
-        throw new Error(`Failed to upload image: ${uploadErr.message || "Unknown storage error"}`);
-      }
-    }
-
-    // Update Firebase Auth
-    try {
-      await updateProfile(user, {
-        displayName: name,
-        photoURL: finalPhotoURL || undefined
+      if (!avatarFile.type.startsWith("image/")) throw new Error("Only image uploads are allowed.");
+      if (avatarFile.size > 5 * 1024 * 1024) throw new Error("Avatar uploads must be 5 MB or smaller.");
+      finalPhotoURL = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(avatarFile);
       });
-    } catch (authErr: any) {
-      console.error("Auth Profile Update Error:", authErr);
-      throw new Error(`Failed to update Auth name/photo: ${authErr.message}`);
     }
 
-    // Update Firestore
-    try {
-      const userRef = doc(db, "users", user.uid);
-      const updateData: any = {
-        name,
-        bio: bio || "",
-        photoURL: finalPhotoURL || null,
-        updatedAt: serverTimestamp(),
-      };
+    const patchData: Record<string, any> = {
+      name,
+      bio: bio || "",
+      photo_url: finalPhotoURL || null,
+    };
+    if (notifications) patchData.notifications = notifications;
 
-      if (notifications) {
-        updateData.notifications = {
-          email: notifications.email ?? true,
-          push: notifications.push ?? false,
-          inApp: notifications.inApp ?? true,
-          earlyWarning: notifications.earlyWarning ?? "3",
-          paymentDay: notifications.paymentDay ?? "due",
-        };
-      }
-
-      await setDoc(userRef, updateData, { merge: true });
-
-      // Update local state
-      setProfileData((prev: any) => ({ ...prev, ...updateData }));
-    } catch (fsErr: any) {
-      console.error("Firestore Update Error:", fsErr);
+    const res = await api.patch<any>("/api/user", patchData);
+    const prof = res?.profile;
+    if (prof) {
+      profileCache.current[currentUser.id] = prof;
+      setProfileData({ ...prof, photoURL: prof.photo_url });
     }
 
-    // Force refresh local user object
-    try {
-      await user.reload();
-      setCurrentUser(auth.currentUser);
-    } catch (reloadErr) {
-      console.warn("Reload failed, but changes were saved.", reloadErr);
-      setCurrentUser(auth.currentUser);
-    }
-  };
-
-  const value = {
-    currentUser,
-    profileData,
-    loading,
-    login,
-    register,
-    resetPassword,
-    loginWithGoogle,
-    logout,
-    updateUserProfile,
-    isMock: false,
+    const stored = getStoredUserData() || {};
+    const updatedStored = { ...stored, name, displayName: name, photoURL: finalPhotoURL };
+    storeAuthTokens(getAuthToken()!, updatedStored);
+    setCurrentUser((prev) => (prev ? { ...prev, name, displayName: name, photoURL: finalPhotoURL } : prev));
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        loading,
+        login,
+        register,
+        resetPassword,
+        confirmPasswordReset,
+        loginWithGoogle,
+        logout,
+        updateUserProfile,
+        profileData,
+        isMock: false,
+        handleOAuthRedirect,
+      }}
+    >
       {!loading && children}
     </AuthContext.Provider>
   );
@@ -233,8 +248,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }

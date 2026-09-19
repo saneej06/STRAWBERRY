@@ -1,3 +1,5 @@
+import { extractToken, verifyToken } from "../api/jwt.js";
+
 const MAX_MESSAGE_LENGTH = 1000;
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_CONTEXT_BYTES = 4 * 1024;
@@ -283,31 +285,10 @@ async function parseUpstreamError(response) {
   return response.text();
 }
 
-async function verifyFirebaseIdToken(idToken) {
-  const firebaseApiKey = process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY;
-  if (!firebaseApiKey) {
-    throw new Error("Server Firebase API key is not configured");
-  }
-
-  const response = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken }),
-    }
-  );
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const data = await response.json();
-  if (!Array.isArray(data.users) || data.users.length === 0) {
-    return null;
-  }
-
-  return data.users[0];
+function verifyAuthToken(accessToken) {
+  const payload = verifyToken(accessToken);
+  if (!payload?.sub) return null;
+  return { id: payload.sub, email: payload.email };
 }
 
 export default async function handler(req, res) {
@@ -346,12 +327,12 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Missing authentication token" });
   }
 
-  const verifiedUser = await verifyFirebaseIdToken(authToken);
-  if (!verifiedUser?.localId) {
+  const verifiedUser = verifyAuthToken(authToken);
+  if (!verifiedUser?.id) {
     return res.status(401).json({ error: "Invalid authentication token" });
   }
 
-  const userRateLimit = takeRateLimitSlot(`user:${verifiedUser.localId}`, USER_RATE_LIMIT_MAX);
+  const userRateLimit = takeRateLimitSlot(`user:${verifiedUser.id}`, USER_RATE_LIMIT_MAX);
   if (!userRateLimit.allowed) {
     res.setHeader("Retry-After", String(userRateLimit.retryAfterSeconds));
     return res.status(429).json({ error: "Too many requests" });
@@ -369,7 +350,7 @@ export default async function handler(req, res) {
 
   const safeContext = sanitizeContext(body.context);
   const formattedSummary = buildFormattedSummary(safeContext);
-  const prompt = `You are SPENDORA's financial assistant.
+  const prompt = `You are STRAWBERRY's financial assistant.
 Use only the structured summary below and do not request personally identifying information.
 Keep responses concise, practical, and privacy-aware.
 Use plain text only. Do not use markdown syntax such as **, __, #, bullet markers, or numbered list markers.
@@ -394,7 +375,7 @@ ${parsedMessage.value}`;
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "HTTP-Referer": getAppUrl(req),
-        "X-Title": "Spendora",
+        "X-Title": "STRAWBERRY",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -409,7 +390,7 @@ ${parsedMessage.value}`;
       console.error("OpenRouter error:", {
         status: response.status,
         error: errorData,
-        userId: verifiedUser.localId,
+        userId: verifiedUser.id,
       });
       return res.status(502).json({ error: "AI provider request failed" });
     }

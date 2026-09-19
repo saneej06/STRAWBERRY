@@ -1,22 +1,27 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useApp } from "../context/AppContext";
-import { LogIn, UserPlus, Mail, Lock, User as UserIcon, ArrowLeft } from "lucide-react";
+import { ArrowLeft, BarChart3, Lock, Mail, ShieldCheck, Sparkles, User as UserIcon } from "lucide-react";
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isResetPassword, setIsResetPassword] = useState(false);
+  const [resetToken, setResetToken] = useState("");
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [devVerificationUrl, setDevVerificationUrl] = useState("");
+  const [devResetUrl, setDevResetUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { login, register, resetPassword, loginWithGoogle, currentUser, loading: authLoading } = useAuth();
-  const { theme } = useApp();
+  const { login, register, resetPassword, confirmPasswordReset, loginWithGoogle, currentUser, loading: authLoading, handleOAuthRedirect } = useAuth();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,22 +30,66 @@ export default function Login() {
     }
   }, [authLoading, currentUser, navigate]);
 
+  useEffect(() => {
+    const resetParam = searchParams.get("reset");
+    if (resetParam) {
+      setIsResetPassword(true);
+      setIsLogin(false);
+      setResetToken(resetParam);
+      window.history.replaceState({}, document.title, "/login");
+      return;
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const redirected = await handleOAuthRedirect();
+        if (redirected) return;
+      } catch (err: any) {
+        setError(err.message || "Failed to authenticate with Google");
+      }
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const queryParams = new URLSearchParams(window.location.search);
+      const oauthError = hashParams.get("error") || queryParams.get("error") || hashParams.get("error_description") || queryParams.get("error_description");
+      if (oauthError) {
+        setError(decodeURIComponent(oauthError).replace(/\+/g, " "));
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    })();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setMessage("");
+    setDevVerificationUrl("");
+    setDevResetUrl("");
     setLoading(true);
 
     try {
-      if (isForgotPassword) {
-        await resetPassword(email);
-        setMessage("Check your inbox for a password reset email");
+      if (isResetPassword && resetToken) {
+        if (resetPasswordValue !== resetConfirmPassword) throw new Error("Passwords do not match");
+        if (resetPasswordValue.length < 6) throw new Error("Password must be at least 6 characters");
+        await confirmPasswordReset(resetToken, resetPasswordValue);
+        setMessage("Password updated successfully. You can now sign in.");
+        setIsResetPassword(false);
+        setIsLogin(true);
+        setResetToken("");
+      } else if (isForgotPassword) {
+        const result = await resetPassword(email);
+        setMessage(result.message);
+        setDevResetUrl(result.devResetUrl || "");
       } else if (isLogin) {
         await login(email, password);
       } else {
         if (!name.trim()) throw new Error("Full name is required");
         if (password !== confirmPassword) throw new Error("Passwords do not match");
-        await register(name, email, password);
+        const result = await register(name, email, password);
+        setMessage(result.message);
+        setDevVerificationUrl(result.verificationUrl || "");
+        setIsLogin(true);
+        setConfirmPassword("");
       }
     } catch (err: any) {
       setError(err.message || "Failed to authenticate");
@@ -62,40 +111,72 @@ export default function Login() {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans transition-colors duration-300"
-      style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}
-    >
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <span className="font-bold text-4xl tracking-wider" style={{ color: "var(--accent)" }}>
-            SPEND
-          </span>
-          <span className="font-bold text-4xl tracking-wider" style={{ color: "var(--text-primary)" }}>
-            ORA
-          </span>
+    <div className="min-h-screen font-sans transition-colors duration-300" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
+      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-10 lg:grid-cols-[1fr_440px] lg:px-8">
+        <div className="hidden lg:block">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-black uppercase tracking-[0.16em]" style={{ color: "var(--accent)" }}>
+            <Sparkles size={14} />
+            STRAWBERRY Finance
+          </div>
+          <h1 className="mt-7 max-w-2xl text-6xl font-black leading-tight" style={{ color: "var(--text-primary)" }}>
+            Smart money tracking with a fresh daily rhythm.
+          </h1>
+          <p className="mt-5 max-w-xl text-lg leading-8" style={{ color: "var(--text-secondary)" }}>
+            Manage expenses, debtors, recurring payments, reports, and AI insights from one polished workspace.
+          </p>
+          <div className="mt-10 grid max-w-xl grid-cols-2 gap-4">
+            {[
+              { icon: BarChart3, label: "Live reports", value: "Clear cashflow" },
+              { icon: ShieldCheck, label: "Private data", value: "Protected access" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
+                <item.icon size={24} style={{ color: "var(--accent)" }} />
+                <p className="mt-4 text-sm font-black uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                  {item.label}
+                </p>
+                <p className="mt-1 text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+                  {item.value}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
-        <h2
-          className="mt-6 text-center text-3xl font-extrabold"
-          style={{ color: "var(--text-primary)" }}
-        >
-          {isForgotPassword
-            ? "Reset your password"
-            : isLogin
-              ? "Sign in to your account"
-              : "Create a new account"}
-        </h2>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="w-full sm:mx-auto sm:max-w-md">
+        <div className="mb-7 text-center lg:hidden">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl text-xl font-black shadow-lg" style={{ background: "linear-gradient(135deg, var(--accent), #38bdf8)", color: "var(--accent-contrast)" }}>
+            S
+          </div>
+          <p className="mt-4 text-2xl font-black" style={{ color: "var(--text-primary)" }}>
+            STRAWBERRY
+          </p>
+        </div>
         <div
-          className="py-8 px-4 shadow sm:rounded-2xl sm:px-10 border transition-colors duration-300"
+          className="rounded-[2rem] border px-5 py-7 shadow-xl sm:px-8"
           style={{
-            background: "var(--bg-surface)",
+            background: "linear-gradient(180deg, var(--bg-surface), var(--bg-elevated))",
             borderColor: "var(--border)",
+            boxShadow: "var(--shadow-soft)",
           }}
         >
+          <div className="mb-8">
+            <p className="text-xs font-black uppercase tracking-[0.16em]" style={{ color: "var(--accent)" }}>
+              {isResetPassword ? "Set New Password" : isForgotPassword ? "Account Recovery" : isLogin ? "Welcome Back" : "Create Workspace"}
+            </p>
+            <h2 className="mt-2 text-3xl font-black" style={{ color: "var(--text-primary)" }}>
+              {isResetPassword
+                ? "Set your new password"
+                : isForgotPassword
+                  ? "Reset your password"
+                  : isLogin
+                    ? "Sign in to STRAWBERRY"
+                    : "Start with STRAWBERRY"}
+            </h2>
+            <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
+              {isResetPassword ? "Enter and confirm your new password." : isForgotPassword ? "Enter your email and I will send a reset link." : "Your financial workspace is ready when you are."}
+            </p>
+          </div>
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-500 px-4 py-3 rounded-xl text-sm">
@@ -105,10 +186,28 @@ export default function Login() {
             {message && (
               <div className="bg-green-500/10 border border-green-500/50 text-green-500 px-4 py-3 rounded-xl text-sm">
                 {message}
+                {devVerificationUrl && (
+                  <a
+                    href={devVerificationUrl}
+                    className="mt-2 block font-bold underline"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    Open development verification link
+                  </a>
+                )}
+                {devResetUrl && (
+                  <a
+                    href={devResetUrl}
+                    className="mt-2 block font-bold underline"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    Open development password reset link
+                  </a>
+                )}
               </div>
             )}
 
-            {!isLogin && !isForgotPassword && (
+            {!isResetPassword && !isLogin && !isForgotPassword && (
               <div className="animate-in fade-in slide-in-from-top-2">
                 <label
                   className="block text-sm font-medium"
@@ -125,7 +224,7 @@ export default function Login() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="rounded-xl block w-full pl-10 sm:text-sm py-3 border outline-none focus:ring-2 transition-all"
+                    className="app-input rounded-2xl block w-full pl-10 sm:text-sm py-3.5 transition-all"
                     style={{
                       background: "var(--bg-elevated)",
                       borderColor: "var(--border)",
@@ -137,132 +236,155 @@ export default function Login() {
               </div>
             )}
 
-            <div>
-              <label
-                className="block text-sm font-medium"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Email address
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5" style={{ color: "var(--text-muted)" }} />
-                </div>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-xl block w-full pl-10 sm:text-sm py-3 border outline-none focus:ring-2 transition-all"
-                  style={{
-                    background: "var(--bg-elevated)",
-                    borderColor: "var(--border)",
-                    color: "var(--text-primary)",
-                  }}
-                  placeholder="you@example.com"
-                />
-              </div>
-            </div>
-
-            {!isForgotPassword && (
-              <div>
-                <label
-                  className="block text-sm font-medium"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Password
-                </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5" style={{ color: "var(--text-muted)" }} />
+            {isResetPassword ? (
+              <>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className="block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>New Password</label>
+                  <div className="mt-1 relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5" style={{ color: "var(--text-muted)" }} />
+                    </div>
+                    <input
+                      type="password"
+                      required
+                      value={resetPasswordValue}
+                      onChange={(e) => setResetPasswordValue(e.target.value)}
+                      className="app-input rounded-2xl block w-full pl-10 sm:text-sm py-3.5 transition-all"
+                      style={{ background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                      placeholder="Enter new password"
+                    />
                   </div>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="rounded-xl block w-full pl-10 sm:text-sm py-3 border outline-none focus:ring-2 transition-all"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor: "var(--border)",
-                      color: "var(--text-primary)",
-                    }}
-                    placeholder="••••••••"
-                  />
                 </div>
-              </div>
-            )}
-
-            {!isLogin && !isForgotPassword && (
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <label
-                  className="block text-sm font-medium"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Confirm Password
-                </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5" style={{ color: "var(--text-muted)" }} />
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className="block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Confirm Password</label>
+                  <div className="mt-1 relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5" style={{ color: "var(--text-muted)" }} />
+                    </div>
+                    <input
+                      type="password"
+                      required
+                      value={resetConfirmPassword}
+                      onChange={(e) => setResetConfirmPassword(e.target.value)}
+                      className="app-input rounded-2xl block w-full pl-10 sm:text-sm py-3.5 transition-all"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        borderColor: resetConfirmPassword && resetPasswordValue !== resetConfirmPassword ? "#ef4444" : "var(--border)",
+                        color: "var(--text-primary)",
+                      }}
+                      placeholder="Confirm new password"
+                    />
                   </div>
-                  <input
-                    type="password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="rounded-xl block w-full pl-10 sm:text-sm py-3 border outline-none focus:ring-2 transition-all"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      borderColor:
-                        confirmPassword && password !== confirmPassword
-                          ? "#ef4444"
-                          : "var(--border)",
-                      color: "var(--text-primary)",
-                    }}
-                    placeholder="••••••••"
-                  />
+                  {resetConfirmPassword && resetPasswordValue !== resetConfirmPassword && (
+                    <p className="mt-1 text-xs text-red-500">Passwords do not match</p>
+                  )}
                 </div>
-                {confirmPassword && password !== confirmPassword && (
-                  <p className="mt-1 text-xs text-red-500">Passwords do not match</p>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Email address</label>
+                  <div className="mt-1 relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5" style={{ color: "var(--text-muted)" }} />
+                    </div>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="app-input rounded-2xl block w-full pl-10 sm:text-sm py-3.5 transition-all"
+                      style={{ background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                </div>
+
+                {!isForgotPassword && (
+                  <div>
+                    <label className="block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Password</label>
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Lock className="h-5 w-5" style={{ color: "var(--text-muted)" }} />
+                      </div>
+                      <input
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="app-input rounded-2xl block w-full pl-10 sm:text-sm py-3.5 transition-all"
+                        style={{ background: "var(--bg-elevated)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
                 )}
-              </div>
-            )}
 
-            {isLogin && !isForgotPassword && (
-              <div className="flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsForgotPassword(true)}
-                  className="text-xs font-medium transition-colors"
-                  style={{ color: "var(--accent)" }}
-                >
-                  Forgot your password?
-                </button>
-              </div>
+                {!isLogin && !isForgotPassword && (
+                  <div className="animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Confirm Password</label>
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Lock className="h-5 w-5" style={{ color: "var(--text-muted)" }} />
+                      </div>
+                      <input
+                        type="password"
+                        required
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="app-input rounded-2xl block w-full pl-10 sm:text-sm py-3.5 transition-all"
+                        style={{
+                          background: "var(--bg-elevated)",
+                          borderColor: confirmPassword && password !== confirmPassword ? "#ef4444" : "var(--border)",
+                          color: "var(--text-primary)",
+                        }}
+                        placeholder="••••••••"
+                      />
+                    </div>
+                    {confirmPassword && password !== confirmPassword && (
+                      <p className="mt-1 text-xs text-red-500">Passwords do not match</p>
+                    )}
+                  </div>
+                )}
+
+                {isLogin && !isForgotPassword && (
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setIsForgotPassword(true)}
+                      className="text-xs font-medium transition-colors"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      Forgot your password?
+                    </button>
+                  </div>
+                )}
+              </>
             )}
 
             <div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-black transition-colors disabled:opacity-50"
-                style={{ background: "var(--accent)" }}
+                className="app-button-primary w-full flex justify-center py-3.5 px-4 rounded-2xl text-sm font-black transition-all hover:-translate-y-0.5 disabled:opacity-50"
               >
                 {loading
                   ? "Processing..."
-                  : isForgotPassword
-                    ? "Send reset link"
-                    : isLogin
-                      ? "Sign in"
-                      : "Sign up"}
+                  : isResetPassword
+                    ? "Set new password"
+                    : isForgotPassword
+                      ? "Send reset link"
+                      : isLogin
+                        ? "Sign in"
+                        : "Sign up"}
               </button>
             </div>
           </form>
 
-          {isForgotPassword ? (
+          {(isResetPassword || isForgotPassword) ? (
             <div className="mt-6 text-center">
               <button
-                onClick={() => setIsForgotPassword(false)}
+                onClick={() => { setIsForgotPassword(false); setIsResetPassword(false); setResetToken(""); }}
                 className="flex items-center justify-center space-x-2 text-sm transition-colors mx-auto"
                 style={{ color: "var(--text-muted)" }}
               >
@@ -279,7 +401,7 @@ export default function Login() {
                   </div>
                   <div className="relative flex justify-center text-sm">
                     <span
-                      className="px-2"
+                      className="px-3"
                       style={{ background: "var(--bg-surface)", color: "var(--text-muted)" }}
                     >
                       Or continue with
@@ -291,7 +413,7 @@ export default function Login() {
                   <button
                     onClick={handleGoogleLogin}
                     disabled={loading}
-                    className="w-full flex justify-center py-3 px-4 border rounded-xl shadow-sm text-sm font-medium transition-colors disabled:opacity-50"
+                    className="w-full flex justify-center py-3.5 px-4 border rounded-2xl shadow-sm text-sm font-bold transition-all hover:-translate-y-0.5 disabled:opacity-50"
                     style={{
                       borderColor: "var(--border)",
                       background: "var(--bg-elevated)",
@@ -304,7 +426,7 @@ export default function Login() {
                       <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                       <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                     </svg>
-                    Google
+                    Continue with Google
                   </button>
                 </div>
               </div>
@@ -324,6 +446,7 @@ export default function Login() {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }

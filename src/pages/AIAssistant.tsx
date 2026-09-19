@@ -4,6 +4,7 @@ import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import { useApp } from "../context/AppContext";
 import { formatCurrency } from "../utils/format";
+import { getAuthToken } from "../services/api";
 
 type ChatMessage = { role: "user" | "model"; text: string };
 type SnapshotItem = { label: string; value: string; helper: string; tone: string; prompt: string };
@@ -175,7 +176,7 @@ export default function AIAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "model",
-      text: "Hello! I am your SPENDORA AI Assistant. I can help you analyze expenses, review debt positions, and turn your financial activity into clear next steps. What would you like to explore?",
+      text: "Hello! I am your STRAWBERRY AI Assistant. I can help you analyze expenses, review debt positions, and turn your financial activity into clear next steps. What would you like to explore?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -325,13 +326,14 @@ export default function AIAssistant() {
       }
 
       const safeContext = buildSafeContext();
-      const idToken = await currentUser.getIdToken();
+      const accessToken = getAuthToken();
+      if (!accessToken) throw new Error("Your session has expired. Please sign in again.");
 
       const response = await fetch("/api/ai-assistant", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           message: `${languageInstruction}\n\nUser request: ${userMessage}`,
@@ -392,13 +394,13 @@ export default function AIAssistant() {
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ borderColor: isDark ? "rgba(103,232,249,0.18)" : "rgba(14,165,233,0.18)", color: isDark ? "#67e8f9" : "#0369a1", background: isDark ? "rgba(8,47,73,0.28)" : "rgba(224,242,254,0.76)" }}>
               <Sparkles size={14} />
-              Spendora Intelligence
+              STRAWBERRY Intelligence
             </div>
             <h1 className="mt-4 text-4xl md:text-5xl font-black tracking-tight" style={{ color: isDark ? "#f8fbff" : "#0f172a" }}>
               A modern finance copilot for expenses, debt, and recovery decisions.
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-6" style={{ color: isDark ? "rgba(203,213,225,0.88)" : "rgba(51,65,85,0.84)" }}>
-              Ask for sharp summaries, category analysis, debt collection guidance, or clear next actions based on your live Spendora data.
+              Ask for sharp summaries, category analysis, debt collection guidance, or clear next actions based on your live STRAWBERRY data.
             </p>
           </div>
         </div>
@@ -428,7 +430,7 @@ export default function AIAssistant() {
                   Conversation Workspace
                 </p>
                 <h2 className="mt-1 text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-                  Ask Spendora anything about your financial records
+                  Ask STRAWBERRY anything about your financial records
                 </h2>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -519,7 +521,7 @@ export default function AIAssistant() {
                       }
                     >
                       <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: msg.role === "user" ? "var(--accent)" : "var(--text-muted)" }}>
-                        {msg.role === "user" ? "You" : "Spendora AI"}
+                        {msg.role === "user" ? "You" : "STRAWBERRY AI"}
                       </div>
                       {msg.role === "model" ? (
                         renderModelMessage(msg.text)

@@ -16,35 +16,65 @@ body {
 /* ─── Theme Variables ─────────────────────────────────── */
 
 :root.dark {
-  --bg-base: #1a1a1a;
-  --bg-surface: #151619;
-  --bg-elevated: #1e2024;
-  --bg-muted: #2a2b2e;
-  --border: #2a2b2e;
+  --bg-base: #0f1318;
+  --bg-surface: #151a21;
+  --bg-elevated: #1d2430;
+  --bg-muted: #2a3442;
+  --border: rgba(148, 163, 184, 0.18);
   --text-primary: #ffffff;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --accent: #00e5ff;
-  --accent-hover: #00c4db;
-  --scrollbar-track: #1a1a1a;
-  --scrollbar-thumb: #2a2b2e;
-  --scrollbar-hover: #3a3b3e;
+  --text-secondary: #cbd5e1;
+  --text-muted: #8a96a8;
+  --accent: #2dd4bf;
+  --accent-hover: #14b8a6;
+  --accent-contrast: #031716;
+  --shadow-soft: 0 22px 70px rgba(0, 0, 0, 0.32);
+  --shadow-card: 0 16px 40px rgba(0, 0, 0, 0.22);
+  --scrollbar-track: #0f1318;
+  --scrollbar-thumb: #2b3543;
+  --scrollbar-hover: #3f4c5d;
 }
 
 :root.light {
-  --bg-base: #f3f4f6;
+  --bg-base: #eef3f7;
   --bg-surface: #ffffff;
-  --bg-elevated: #f9fafb;
-  --bg-muted: #e5e7eb;
-  --border: #d1d5db;
-  --text-primary: #111827;
-  --text-secondary: #374151;
-  --text-muted: #6b7280;
-  --accent: #0891b2;
-  --accent-hover: #0e7490;
-  --scrollbar-track: #e5e7eb;
-  --scrollbar-thumb: #d1d5db;
-  --scrollbar-hover: #9ca3af;
+  --bg-elevated: #f8fbfc;
+  --bg-muted: #e6edf2;
+  --border: rgba(15, 23, 42, 0.11);
+  --text-primary: #0f172a;
+  --text-secondary: #405164;
+  --text-muted: #718096;
+  --accent: #0f9f8f;
+  --accent-hover: #0d8a7d;
+  --accent-contrast: #ecfeff;
+  --shadow-soft: 0 24px 80px rgba(15, 23, 42, 0.12);
+  --shadow-card: 0 14px 34px rgba(15, 23, 42, 0.09);
+  --scrollbar-track: #e6edf2;
+  --scrollbar-thumb: #c5d1dc;
+  --scrollbar-hover: #94a3b8;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent 28%),
+    linear-gradient(180deg, var(--bg-base), color-mix(in srgb, var(--bg-base) 88%, #ffffff 12%));
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  outline-offset: 2px;
 }
 
 @layer utilities {
@@ -60,6 +90,32 @@ body {
 
   .slide-in-from-top-4 {
     animation-name: slideInFromTop;
+  }
+
+  .slide-in-from-bottom-4 {
+    animation-name: slideInFromBottom;
+  }
+
+  .zoom-in {
+    animation-name: zoomIn;
+  }
+
+  .app-panel {
+    background: linear-gradient(180deg, var(--bg-surface), color-mix(in srgb, var(--bg-surface) 82%, var(--bg-elevated)));
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+  }
+
+  .app-input {
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+
+  .app-button-primary {
+    background: linear-gradient(135deg, var(--accent), #38bdf8);
+    color: var(--accent-contrast);
+    box-shadow: 0 12px 26px color-mix(in srgb, var(--accent) 26%, transparent);
   }
 }
 
@@ -102,4 +158,28 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-hover);
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

@@ -206,7 +206,7 @@ export default function DebtorDetail() {
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
-    doc.text("Spendora Debtor Report", 14, 17);
+    doc.text("STRAWBERRY Debtor Report", 14, 17);
 
     doc.setTextColor(40, 40, 50);
     doc.setFontSize(11);

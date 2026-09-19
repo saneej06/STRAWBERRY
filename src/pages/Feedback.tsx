@@ -54,7 +54,7 @@ export default function Feedback() {
                 </div>
                 <h1 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>Thank You!</h1>
                 <p className="text-lg" style={{ color: "var(--text-muted)" }}>
-                    Your feedback has been received. I appreciate you taking the time to help me improve Spendora.
+                    Your feedback has been received. I appreciate you taking the time to help me improve STRAWBERRY.
                 </p>
                 <div className="pt-4">
                     <button
@@ -82,7 +82,7 @@ export default function Feedback() {
                     Share Your Feedback
                 </h1>
                 <p className="text-lg" style={{ color: "var(--text-muted)" }}>
-                    Help me build the future of Spendora. Whether it's a suggestion, a bug, or praise, I'm listening.
+                    Help me build the future of STRAWBERRY. Whether it's a suggestion, a bug, or praise, I'm listening.
                 </p>
             </div>
 
@@ -162,7 +162,7 @@ export default function Feedback() {
             </div>
 
             <p className="text-center mt-8 text-sm px-10" style={{ color: "var(--text-muted)" }}>
-                By submitting feedback, you agree to our terms. Your message will be sent directly to the developer, Insath Raif.
+                By submitting feedback, you agree to our terms. Your message will be sent directly to the developer, Mohammed Saneei.
             </p>
         </div>
     );

@@ -124,7 +124,7 @@ export default function ExpenseDetail() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(24);
     doc.setTextColor(...accentColor);
-    doc.text("SPENDORA", 14, 25);
+    doc.text("STRAWBERRY", 14, 25);
     doc.setFontSize(10);
     doc.setTextColor(200, 200, 200);
     doc.text(`Payment History: ${expense.subject}`, 14, 34);
@@ -165,7 +165,7 @@ export default function ExpenseDetail() {
 
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.text("Spendora Financial Services", pageWidth / 2, 32, { align: "center" });
+    doc.text("STRAWBERRY Financial Services", pageWidth / 2, 32, { align: "center" });
 
     // Dividers
     doc.setDrawColor(240, 240, 240);

@@ -169,7 +169,7 @@ export default function Settings() {
       setNewCategory("");
     } catch (err: any) {
       console.error(err);
-      setCategoryError(err.message || "Failed to add category. Check your connection or Firestore rules.");
+      setCategoryError(err.message || "Failed to add category. Check your connection or try again.");
     } finally {
       setCategoryLoading(false);
     }

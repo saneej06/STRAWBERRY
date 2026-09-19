@@ -312,7 +312,7 @@ export default function RecurringExpenses() {
       margin: { left: 14, right: 14 },
     });
 
-    doc.save(`spendora-recurring-expenses-${new Date().toISOString().split("T")[0]}.pdf`);
+    doc.save(`strawberry-recurring-expenses-${new Date().toISOString().split("T")[0]}.pdf`);
   };
 
   if (loading) {

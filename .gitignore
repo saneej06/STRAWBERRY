@@ -9,3 +9,10 @@ dist/
 .env*.local
 storage/
 *.log
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# SQLite database directory
+server/database/
