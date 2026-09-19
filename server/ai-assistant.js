@@ -382,6 +382,7 @@ ${parsedMessage.value}`;
         model: "inclusionai/ling-3.0-flash-fin:free",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 512,
+        reasoning: { enabled: false },
       }),
       signal: controller.signal,
     });
