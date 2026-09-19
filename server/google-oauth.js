@@ -23,13 +23,21 @@ export function googleConfigured() {
 }
 
 export function getRedirectUri(req) {
+  let source = "getAppUrl";
+  let uri;
   if (process.env.GOOGLE_REDIRECT_URI) {
-    return process.env.GOOGLE_REDIRECT_URI.replace(/\/$/, "");
+    uri = process.env.GOOGLE_REDIRECT_URI.replace(/\/$/, "");
+    source = "GOOGLE_REDIRECT_URI";
+  } else if (!isProduction()) {
+    uri = "http://localhost:3000/api/auth-google/callback";
+    source = "dev-default";
+  } else {
+    uri = `${getAppUrl(req)}/api/auth-google/callback`;
   }
-  if (!isProduction()) {
-    return "http://localhost:3000/api/auth-google/callback";
-  }
-  return `${getAppUrl(req)}/api/auth-google/callback`;
+  // TEMPORARY DIAGNOSTIC (non-secret): logs only the resolved redirect_uri.
+  // Remove after verifying production Google OAuth. Never logs credentials.
+  console.log(`[google-oauth][redirect_uri] source=${source} uri=${uri}`);
+  return uri;
 }
 
 export function makeStateToken() {

@@ -11,7 +11,14 @@ const defaultEnvPath = path.resolve(__dirname, '.env');
 dotenv.config({ path: fs.existsSync(localEnvPath) ? localEnvPath : defaultEnvPath });
 
 const apiRoutes = {
-  '/api/*': 'api/[...slug].js',
+  '/api/ai-assistant': 'api/ai-assistant.js',
+  '/api/auth': 'api/auth.js',
+  '/api/user': 'api/user.js',
+  '/api/data': 'api/data.js',
+  '/api/password-reset': 'api/password-reset.js',
+  '/api/auth-google': 'api/auth-google.js',
+  '/api/auth-google-config': 'api/auth-google-config.js',
+  '/api/auth-google/callback': 'api/auth-google/callback.js',
 };
 
 const vercelApiPlugin = () => ({
@@ -19,18 +26,17 @@ const vercelApiPlugin = () => ({
   configureServer(server: any) {
     const app = express();
     app.use(express.json({ limit: '16kb' }));
-    app.use((req, res, next) => {
-      if (!req.path?.startsWith('/api/')) return next();
-      void (async () => {
+    for (const [route, modulePath] of Object.entries(apiRoutes)) {
+      app.all(route, async (req, res) => {
         try {
-          const handler = await import(pathToFileURL(path.resolve(__dirname, apiRoutes['/api/*'])).href);
+          const handler = await import(pathToFileURL(path.resolve(__dirname, modulePath)).href);
           await handler.default(req, res);
         } catch (err) {
-          console.error('Local API Error:', err);
+          console.error(`Local API Error (${route}):`, err);
           res.status(500).json({ error: 'Local API Server Error' });
         }
-      })();
-    });
+      });
+    }
     server.middlewares.use(app);
   }
 });

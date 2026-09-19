@@ -11,7 +11,7 @@ STRAWBERRY is a Vite + React expense tracker with self-hosted authentication, Su
 
 - Frontend: React 19, TypeScript, Vite
 - Styling: Tailwind CSS v4
-- Backend: a single Vercel Serverless Function (`api/[...slug].js`) dispatching the `server/` handlers, with Supabase PostgreSQL via `@supabase/supabase-js` (service-role key, server-side only)
+- Backend: 8 Vercel Serverless Functions (`api/*.js`, one per route) dispatching to the shared `server/` handlers, with Supabase PostgreSQL via `@supabase/supabase-js` (service-role key, server-side only)
 - Auth: Self-hosted JWT auth with bcrypt password hashing
 - AI: OpenRouter via `server/ai-assistant.js`
 - Email (optional): Brevo for verification and password reset emails
@@ -128,7 +128,15 @@ Authorized redirect URI must be `https://<your-domain>/api/auth-google/callback`
 ```text
 strawberry/
 |-- api/
-|   `-- [...slug].js      (single Vercel Serverless entrypoint, dispatches /api/*)
+|   |-- ai-assistant.js       (Vercel function entrypoints, one per route)
+|   |-- auth.js
+|   |-- auth-google.js
+|   |-- auth-google/               -> /api/auth-google/callback
+|   |   `-- callback.js
+|   |-- auth-google-config.js
+|   |-- data.js
+|   |-- password-reset.js
+|   `-- user.js
 |-- server/
 |   |-- ai-assistant.js
 |   |-- auth.js
